@@ -1,107 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Jenkins Self-Healing Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>Jenkins Self-Healing Dashboard</title>
+  <meta http-equiv="refresh" content="10" />
+  <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="bg-dark text-white">
-    <div class="container mt-4">
-        <h2 class="mb-4">🛠️ Jenkins Self-Healing Dashboard</h2>
-
-        <!-- Filters -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <label for="statusFilter" class="form-label">Filter by Status</label>
-                <select id="statusFilter" class="form-select">
-                    <option value="all">All</option>
-                    <option value="red">Failed</option>
-                    <option value="blue">Success</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Job Cards -->
-        <div id="jobs" class="row g-3"></div>
-    </div>
-
-    <!-- Manual Rebuild Modal -->
-    <div class="modal fade" id="manualRebuildModal" tabindex="-1" aria-labelledby="manualRebuildModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="manualRebuildModalLabel">Trigger Manual Rebuild</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to rebuild this job?</p>
-                    <form id="rebuildForm">
-                        <input type="hidden" id="jobUrl" name="job_url" />
-                        <button type="submit" class="btn btn-primary">Rebuild Job</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let allJobs = [];
-        
-        // Function to load jobs and update UI
-        async function loadJobs() {
-            const res = await fetch('/api/jobs');
-            allJobs = await res.json();
-            displayJobs();
-        }
-
-        // Function to filter and display jobs
-        function displayJobs() {
-            const statusFilter = document.getElementById('statusFilter').value;
-            const filteredJobs = statusFilter === 'all' ? allJobs : allJobs.filter(job => job.status.includes(statusFilter));
-            const container = document.getElementById('jobs');
-            container.innerHTML = '';
-
-            filteredJobs.forEach(job => {
-                const status = job.status.includes("red") ? "danger" : "success";
-                container.innerHTML += `
-                    <div class="col-md-4">
-                        <div class="card bg-${status} text-white p-3 shadow rounded-4">
-                            <h5>${job.name}</h5>
-                            <p>Status: ${job.status}</p>
-                            <a href="${job.url}" class="btn btn-light btn-sm">View Job</a>
-                            <button class="btn btn-${status} btn-sm mt-2" onclick="triggerManualRebuild('${job.url}')">Rebuild</button>
-                        </div>
-                    </div>`;
-            });
-        }
-
-        // Function to trigger manual rebuild
-        function triggerManualRebuild(jobUrl) {
-            document.getElementById('jobUrl').value = jobUrl;
-            new bootstrap.Modal(document.getElementById('manualRebuildModal')).show();
-        }
-
-        // Handle manual rebuild form submission
-        document.getElementById('rebuildForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const res = await fetch('/manual_rebuild', {
-                method: 'POST',
-                body: formData
-            });
-            const result = await res.json();
-            alert(result.message);
-            loadJobs();
-        });
-
-        // Initial job loading and set up interval
-        loadJobs();
-        setInterval(loadJobs, 10000); // Auto-refresh every 10s
-
-        // Filter change handler
-        document.getElementById('statusFilter').addEventListener('change', displayJobs);
-    </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+<body>
+  <h2>🛠️ Jenkins Self-Healing Dashboard</h2>
+  <table>
+    <tr><th>Job</th><th>View</th><th>Status</th><th>Retries</th><th>Last Run</th></tr>
+    {% for job in jobs %}
+    <tr class="{{ 'fail' if job.status != 'SUCCESS' else 'ok' }}">
+      <td>{{ job.job }}</td>
+      <td>{{ job.view }}</td>
+      <td>{{ job.status }}</td>
+      <td>{{ job.retries }}</td>
+      <td>{{ job.timestamp }}</td>
+    </tr>
+    {% endfor %}
+  </table>
 </body>
 </html>
