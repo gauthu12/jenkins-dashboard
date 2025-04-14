@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jenkins Self-Healing Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-white">
+    <div class="container mt-4">
+        <h2 class="mb-4">🛠️ Jenkins Self-Healing Dashboard</h2>
+        <div class="mb-3">
+            <label for="statusFilter" class="form-label">Filter by Status:</label>
+            <select id="statusFilter" class="form-select w-25">
+                <option value="all">All</option>
+                <option value="success">Success</option>
+                <option value="danger">Failed</option>
+            </select>
+        </div>
+        <div id="alertArea"></div>
+        <div id="jobs" class="row g-3"></div>
+    </div>
+    <script>
+        async function fetchJobs() {
+            const res = await fetch('/api/jobs');
+            return await res.json();
+        }
+
+        async function restartJob(jobUrl) {
+            const res = await fetch('/api/restart?url=' + encodeURIComponent(jobUrl));
+            const result = await res.json();
+            showAlert(result.message, result.status === 'success' ? 'success' : 'danger');
+        }
+
+        function showAlert(message, type) {
+            const alertArea = document.getElementById('alertArea');
+            alertArea.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>`;
+        }
+
+        async function loadJobs() {
+            const jobs = await fetchJobs();
+            const container = document.getElementById('jobs');
+            const filter = document.getElementById('statusFilter').value;
+            container.innerHTML = '';
+            jobs.forEach(job => {
+                const status = job.status.includes("red") ? "danger" : "success";
+                if (filter !== 'all' && status !== filter) return;
+
+                container.innerHTML += `
+                    <div class="col-md-4">
+                        <div class="card bg-${status} text-white p-3 shadow rounded-4">
+                            <h5>${job.name}</h5>
+                            <p>Status: ${job.status}</p>
+                            <a href="${job.url}" class="btn btn-light btn-sm" target="_blank">View Job</a>
+                            <button onclick="restartJob('${job.url}')" class="btn btn-warning btn-sm ms-2">Restart</button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        document.getElementById('statusFilter').addEventListener('change', loadJobs);
+        loadJobs();
+        setInterval(loadJobs, 10000); // Auto-refresh every 10s
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
